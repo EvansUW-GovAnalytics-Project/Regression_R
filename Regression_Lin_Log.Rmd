@@ -96,7 +96,17 @@ rsq(gauss2,adj=T)
 ```
 
 
-5. Finally, a nice summary plot of your work using **margins** library:
+5. Finally, some nice summary plots:
+
+You can see the coefficient estimates like this:
+```{r, eval=TRUE}
+library(dotwhisker)
+
+dwplot(gauss2,by_2sd = F)
+```
+
+
+You can also use  **margins** library:
 
 ```{r}
 library(margins)
@@ -115,11 +125,6 @@ And the interaction:
 persp(gauss2)
 ```
 
-```{r, eval=TRUE}
-library(dotwhisker)
-
-dwplot(gauss2,by_2sd = F)
-```
 
 
 
@@ -181,14 +186,40 @@ lmtest::lrtest(Logi1,Logi2)
 
 Model for the second hypothesis is chosen.
 
-6. Logistics regression coefficients do not offer marginal effects on how much eah variable affects the probability of the '1' outcome. We can get it like this:
+6. Logistics regression coefficients do not offer marginal effects on how much eah variable affects the probability of the '1' outcome. We can get it using **margins** library:
 
 ```{r, eval=TRUE}
 library(margins)
-(modelChosen = margins(Logi2))
+(marginsINFO = margins(Logi2))
 ```
 
-In this case I need plot per variable:
+In this case, I could produce a plot for both coefficients. Take a look at the summary of 
+
+
+```{r, eval=TRUE}
+(marginsSUMM=summary(marginsINFO))
+```
+
+I can use that information like this:
+
+```{r, eval=TRUE}
+
+base= ggplot(marginsSUMM,
+             aes(x=factor, y=AME))
+base= base + geom_point()
+
+plotMargins = base + theme(axis.text.x = element_text(angle = 80,size = 6,hjust = 1))
+plotMargins    
+```
+
+We can add the the confidence intervals:
+
+```{r, eval=TRUE}
+plotMargins +  geom_errorbar(aes(ymin=lower,
+                                 ymax=upper))
+```
+
+It is a good idea to use the indivual plots per variable:
 ```{r, eval=TRUE}
 cplot(Logi2, "Democracy")
 ```
@@ -197,6 +228,7 @@ cplot(Logi2, "Democracy")
 cplot(Logi2, "kwh_pop")
 ```
 
+And for the interaction:
 ```{r}
 persp(Logi2)
 ```
