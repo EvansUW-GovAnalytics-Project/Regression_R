@@ -32,30 +32,26 @@ row.names(fromPy)=NULL
 Verifying data structure:
 
 ```{r, eval=TRUE}
-str(fromPy,width = 70,strict.width='cut')
+str(fromPy,width = 50,strict.width='cut')
 ```
-
-
-
 
 # <font color="red">R for Regression</font>
 
 ## Continuous outcome 
 
-Generally speaking, we use regression when we have a continuous outcome o dependent variable, and a set of independent variables of different type. 
+Generally speaking, we use regression when we have a continuous outcome or dependent variable, and a set of independent variables which can be of different types. 
 
-### * __EXPLANATORY APPROACH__
 
 1. State hypotheses:
 
 Prepare your hypotheses:
 ```{r, eval=TRUE}
 # hypothesis 1: HDI increases as Democracy advances:
-hypo1=formula(HDI~ Score)
+hypo1=formula(HDI~ Democracy)
 
 # hypothesis 2: HDI increases as Democracy and Industrialization advance:
 
-hypo2=formula(HDI~ Score + kWh_pop)
+hypo2=formula(HDI~ Democracy * kwh_pop)
 ```
 
 
@@ -99,139 +95,55 @@ library(rsq)
 rsq(gauss2,adj=T)
 ```
 
-5. Verify the situation of chosen model:
 
-5.1. Linearity between dependent variable and predictors is assumed, then these dots should follow a linear and horizontal trend:
-```{r, eval=TRUE}
-plot(gauss2,1)
-```
-The linear relationship holds, but it is worth evaluating the outliers.
+5. Finally, a nice summary plot of your work using **margins** library:
 
-5.2. Normality of residuals is assumed:
+```{r}
+library(margins)
 
-Visual exploration:
-```{r, eval=TRUE}
-plot(gauss2,2)
-```
-
-Mathematical exploration:
-```{r, eval=TRUE}
-# The data is normal if the p-value is above 0.05
-shapiro.test(gauss2$residuals)
-```
-
-5.3. Homoscedasticity is assumed, so you need to check if residuals are spread equally along the ranges of predictors:
-
-Visual exploration:
-
-```{r, eval=TRUE}
-plot(gauss2, 3)
-```
-
-Mathematical exploration:
-```{r, eval=TRUE}
-library(lmtest)
-#pvalue<0.05 you cannot assume Homoscedasticity
-bptest(gauss2) 
-```
-
-5.4. We assume that there is no colinearity, that is, that the predictors are not correlated.
-
-
-```{r, eval=TRUE}
-library(car)
-vif(gauss2) # lower than 5 is desirable
-```
-
-5.5. Analize the effect of atypical values. Determine if outliers (points that are far from the rest, but still in the trend) or high-leverage points (far from the trend but close to the rest) are influential:
-
-Visual exploration:
-```{r, eval=TRUE}
-plot(gauss2,5)
-```
-
-Querying:
-```{r, eval=TRUE}
-gaussInf=as.data.frame(influence.measures(gauss2)$is.inf)
-gaussInf[gaussInf$cook.d,]
+cplot(gauss2,'Democracy')
 ```
 
 
-6. Finally, a nice summary plot of your work:
-
-```{r, eval=TRUE}
-library(sjPlot)
-
-plot_models(gauss2,vline.color = "grey")
+```{r}
+cplot(gauss2,'kwh_pop')
 ```
 
+And the interaction:
 
-* __PREDICTIVE APPROACH__
-
-
-1. Split the data set:
-
-```{r, eval=TRUE}
-library(caret)
-
-set.seed(123)
-
-selection = createDataPartition(fromPy$HDI,
-                                p = 0.75,
-                                list = FALSE)
-#
-trainGauss = fromPy[ selection, ]
-#
-testGauss  = fromPy[-selection, ]
+```{r}
+persp(gauss2)
 ```
 
-2. Regress with train data
-
-Let's use cross validation, applying the regression to five samples from the training data set:
 ```{r, eval=TRUE}
-ctrl = trainControl(method = 'cv',number = 5)
+library(dotwhisker)
 
-gauss2CV = train(hypo2,
-                 data = trainGauss, 
-                 method = 'glm',
-                 trControl = ctrl)
-
-summary(gauss2CV)
+dwplot(gauss2,by_2sd = F)
 ```
 
-3. Evaluate performance
-
-
-```{r, eval=TRUE}
-
-predictedVal<-predict(gauss2CV,testGauss)
-
-postResample(obs = testGauss$HDI,
-             pred=predictedVal)
-```
 
 
 ## Binary outcome 
 
-In this situation you have binary dependent variable, which we do not currently have:
+In this situation you have a binary dependent variable, which we do not currently have:
+
 
 ```{r}
 fromPy$HDIdico=ifelse(fromPy$HDI>median(fromPy$HDI,
-                                       na.rm = T),
-                     1,0)
+                                        na.rm = T),
+                      1,0)
 ```
 
 Now we have it. 
 
-### * __EXPLANATORY APPROACH__
 
 1. State hypothesis:
 
 Let's use the same ones:
 
 ```{r, eval=TRUE}
-hypoDico1=formula(HDIdico~ Score)
-hypoDico2=formula(HDIdico~ Score + kWh_pop)
+hypoDico1=formula(HDIdico~ Democracy)
+hypoDico2=formula(HDIdico~ Democracy * kwh_pop)
 ```
 
 2. Reformat
@@ -241,7 +153,7 @@ fromPy$HDIdico=factor(fromPy$HDIdico)
 ```
 
 
-6. Compute regression models:
+3. Compute regression models:
 
 ```{r, eval=TRUE}
 Logi1=glm(hypoDico1,data = fromPy,
@@ -250,7 +162,7 @@ Logi2=glm(hypoDico2,data = fromPy,
           family = "binomial")
 ```
 
-7. See results:
+4. See results:
 
 * First Hypothesis:
 ```{r, eval=TRUE}
@@ -262,119 +174,30 @@ summary(Logi1)
 summary(Logi2)
 ```
 
-8. Search for better model:
+5. Search for better model:
 ```{r, eval=TRUE}
-lrtest(Logi1,Logi2)
+lmtest::lrtest(Logi1,Logi2)
 ```
 
 Model for the second hypothesis is chosen.
 
-9. Verify the situation of chosen model
-
-9.1. Linearity assumption (Box-Tidwell test)
-
-```{r, eval=TRUE}
-DataRegLogis=fromPy
-DataRegLogis$demoTEST=fromPy$Score*log(fromPy$Score)
-DataRegLogis$kWhTEST=fromPy$kWh_pop*log(fromPy$kWh_pop)
-
-DicoTest=formula(HDIdico~ Score + kWh_pop + demoTEST + kWhTEST)
-
-summary(glm(DicoTest,data=DataRegLogis,family = binomial))
-
-```
-
-9.2. We assume that there is no colinearity, that is, that the predictors are not correlated.
-
-```{r, eval=TRUE}
-vif(Logi2)
-```
-
-9.3 Analize the effect of atypical values. Determine if outliers (points that are far from the rest, but still in the trend) or high-leverage points (far from the trend but close to the rest) are influential:
-
-Visual exploration:
-
-```{r, eval=TRUE}
-plot(Logi2,5)
-```
-
-10. Finally, a nice summary plot of your work by computing the marginal effects:
+6. Logistics regression coefficients do not offer marginal effects on how much eah variable affects the probability of the '1' outcome. We can get it like this:
 
 ```{r, eval=TRUE}
 library(margins)
 (modelChosen = margins(Logi2))
 ```
 
+In this case I need plot per variable:
 ```{r, eval=TRUE}
-(margins=summary(modelChosen))
+cplot(Logi2, "Democracy")
 ```
 
-
 ```{r, eval=TRUE}
-
-base= ggplot(margins,aes(x=factor, y=AME)) + geom_point()
-plot2 = base + theme(axis.text.x = element_text(angle = 80,
-                                              size = 6,
-                                              hjust = 1))
-plot2    
-```
-```{r, eval=TRUE}
-plot2 +  geom_errorbar(aes(ymin=lower, ymax=upper))
+cplot(Logi2, "kwh_pop")
 ```
 
-### * __PREDICTIVE APPROACH__
-
-
-1. Split the data set:
-```{r, eval=TRUE}
-set.seed(123)
-
-selection = createDataPartition(DataRegLogis$HDIdico,
-                                p = 0.75,
-                                list = FALSE)
-trainLogi = DataRegLogis[selection, ]
-testLogi  = DataRegLogis[-selection, ]
+```{r}
+persp(Logi2)
 ```
-
-2. Regress with train data
-
-Let’s use cross validation, applying the regression to five samples from the training data set:
-```{r, eval=TRUE}
-set.seed(123)
-ctrl = trainControl(method = 'cv',number = 5)
-
-Logis2CV = train(hypoDico2,
-                 data = trainLogi, 
-                 method = 'glm',
-                 family="binomial",
-                 trControl = ctrl)
-```
-
-3. See results:
-
-```{r, eval=TRUE}
-summary(Logis2CV)
-```
-
-3. Evaluate performance
-
-3.1 Get predictions on test data
-```{r, eval=TRUE}
-
-predictions = predict(Logis2CV,
-                      newdata=testLogi,
-                      type='raw')
-```
-
-3.2 Assess performance 
-```{r, eval=TRUE}
-confusionMatrix(data=predictions,
-                reference=testLogi$HDIdico,
-                positive = "1")
-```
-
-Here is some help for you to interpret the result: 
-
-<iframe src="https://docs.google.com/presentation/d/e/2PACX-1vRyFvA5U2HXC3CGBeKEr209_KLjjdeo8FoKT6BxMsjLNOJwx7YDUmGEpDq1pzfGO7Zizuk5rogUNPgj/embed?start=false&loop=false&delayms=3000" frameborder="0" width="960" height="569" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
-
 
