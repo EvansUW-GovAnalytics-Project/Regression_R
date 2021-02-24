@@ -88,7 +88,7 @@ summary(gauss2)
 anova(gauss1,gauss2,test="Chisq")
 ```
 
-Model for the first hypothesis is chosen. You can get the RSquared if needed:
+Model for the second hypothesis is chosen. You can get the RSquared if needed:
 
 ```{r, eval=TRUE}
 library(rsq)
